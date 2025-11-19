@@ -1,0 +1,16 @@
+FIXES:
+Parsing dashes correctly for E-sports
+
+FEATURES:
+
+1. Error checking for Salesforce
+
+    In time needs to be less than out time by at least 1 minute
+
+    - Out time and in time both exist
+    - In time < out time
+    - Outcome == Scheduled with time
+    - AM time in PM group, or vice versa
+
+2. Duplicated Attendence
+    - # of scans for a given student in any group on a weekly?, or monthly basis

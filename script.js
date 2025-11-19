@@ -158,11 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
 
         // Create download link in the UI
-        const safeGroupName = groupName.split('-').pop().trim().replace(/[^a-z0-9]/gi, '_');
+        const className = groupName.includes(' - ') ? groupName.split(' - ').pop().trim() : groupName;
+        const safeGroupName = className.replace(/[^a-z0-9]/gi, '_');
         const reportItem = document.createElement('div');
         reportItem.className = 'report-item flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0';
         reportItem.innerHTML = `
-            <span class="font-medium text-gray-800">${groupName.split('-').pop().trim()}</span>
+            <span class="font-medium text-gray-800">${className}</span>
             <a href="${url}" download="${safeGroupName}.xlsx" class="bg-green-500 text-white text-sm font-semibold py-1 px-3 rounded-md hover:bg-green-600 transition-colors">Download</a>
         `;
         reportListElement.appendChild(reportItem);
