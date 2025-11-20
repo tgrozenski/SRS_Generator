@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const processBtn = document.getElementById('processBtn');
     const statusElement = document.getElementById('status');
     const reportListElement = document.getElementById('reportList');
+    const errorsSection = document.getElementById('errors-section');
+    const errorList = document.getElementById('errorList');
 
     let selectedFile;
 
@@ -28,17 +30,40 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset UI
         processBtn.disabled = true;
         statusElement.textContent = 'Processing...';
+        statusElement.classList.remove('text-red-600');
         reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
+        errorList.innerHTML = '';
+        errorsSection.classList.add('hidden');
 
         const reader = new FileReader();
         reader.onload = (event) => {
             const csvData = event.target.result;
             try {
+                const validationErrors = validateCSVData(csvData);
+
+                if (validationErrors.length > 0) {
+                    errorsSection.classList.remove('hidden');
+                    validationErrors.forEach(error => {
+                        const errorItem = document.createElement('div');
+                        errorItem.className = 'p-2 border-b border-red-100 last:border-b-0';
+                        errorItem.textContent = error.toReadableMessage();
+                        errorList.appendChild(errorItem);
+                    });
+                }
+
                 processData(csvData);
-                statusElement.textContent = 'Processing complete!';
+
+                if (validationErrors.length > 0) {
+                    statusElement.textContent = `Processing complete with ${validationErrors.length} warning(s).`;
+                    statusElement.classList.add('text-red-600');
+                } else {
+                    statusElement.textContent = 'Processing complete!';
+                }
+
             } catch (error) {
                 console.error("Failed to process data:", error);
                 statusElement.textContent = `Error: ${error.message}`;
+                statusElement.classList.add('text-red-600');
                 alert(`An error occurred: ${error.message}`);
             } finally {
                 processBtn.disabled = false;
@@ -47,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onerror = () => {
             alert('Error reading file.');
             statusElement.textContent = 'Error reading file.';
+            statusElement.classList.add('text-red-600');
             processBtn.disabled = false;
         };
         reader.readAsText(selectedFile);
@@ -54,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseCSV(text) {
         const lines = text.trim().split('\n');
-        // Match fields that are enclosed in quotes. This is more robust.
         const headerRegex = /"([^"]*)"/g;
         const headers = [...lines[0].matchAll(headerRegex)].map(match => match[1]);
 
@@ -94,14 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const allRows = parseCSV(csvData);
         const groupNameKey = 'Program Day: Group: Class Name';
 
-        // Dynamically find unique groups
         const uniqueGroups = [...new Set(allRows.map(row => row[groupNameKey]).filter(Boolean))];
 
         if (uniqueGroups.length === 0) {
             throw new Error(`Could not find any groups under the column "${groupNameKey}".`);
         }
 
-        reportListElement.innerHTML = ''; // Clear placeholder
+        reportListElement.innerHTML = '';
 
         uniqueGroups.forEach(groupName => {
             const attendanceData = {};
@@ -157,7 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
 
-        // Create download link in the UI
         const className = groupName.includes(' - ') ? groupName.split(' - ').pop().trim() : groupName;
         const safeGroupName = className.replace(/[^a-z0-9]/gi, '_');
         const reportItem = document.createElement('div');

@@ -27,6 +27,12 @@
                 <button id="processBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg" disabled>Process File</button>
             </div>
             <div id="status" class="text-center font-medium"></div>
+            <div id="errors-section" class="hidden">
+                <h2 class="text-center text-xl font-semibold text-red-600 mb-4">Data Integrity Issues Found</h2>
+                <div id="errorList" class="border-2 border-red-200 rounded-lg p-4 max-h-60 overflow-y-auto bg-red-50 text-sm font-mono">
+                    <!-- Error messages will be dynamically inserted here -->
+                </div>
+            </div>
             <div class="results-section">
                 <h2 class="text-center text-xl font-semibold text-gray-700 mb-4">Generated Reports</h2>
                 <div id="reportList" class="border border-gray-200 rounded-lg p-4 min-h-[80px] bg-gray-50">
@@ -36,6 +42,7 @@
         </main>
     </div>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script src="script.js"></script>
+    <script src="dataValidation.js"></script>
+    <script src="generateReports.js"></script>
 </body>
 </html>
