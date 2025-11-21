@@ -1,7 +1,7 @@
 FIXES:
-- Add unit testing for individual row checking to ensure correctness
 
 FEATURES:
+- Improve xls styling for output files, header frozen, alternating grey white rows for easy scanning of sheet
 
 1. Duplicated Attendence
     - # of scans for a given student in any group on a weekly?, or monthly basis

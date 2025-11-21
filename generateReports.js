@@ -152,33 +152,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function generateReport(groupName, attendanceData) {
-        const workbook = XLSX.utils.book_new();
-        const header = ["Student Name", "Grade", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-        const sheetData = [header];
+    async function generateReport(groupName, attendanceData) {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Attendance', {
+            views: [{ state: 'frozen', ySplit: 1 }]
+        });
+
+        worksheet.columns = [
+            { header: 'Student Name', key: 'studentName', width: 30 },
+            { header: 'Grade', key: 'grade', width: 10 },
+            { header: 'Monday', key: 'monday', width: 15 },
+            { header: 'Tuesday', key: 'tuesday', width: 15 },
+            { header: 'Wednesday', key: 'wednesday', width: 15 },
+            { header: 'Thursday', key: 'thursday', width: 15 },
+            { header: 'Friday', key: 'friday', width: 15 },
+        ];
 
         const sortedStudents = Object.keys(attendanceData).sort();
 
         sortedStudents.forEach(studentName => {
             const studentInfo = attendanceData[studentName];
             const daysAttended = studentInfo.days;
-            const row = [
-                studentName,
-                studentInfo.grade,
-                daysAttended.has('Monday') ? '✔' : '',
-                daysAttended.has('Tuesday') ? '✔' : '',
-                daysAttended.has('Wednesday') ? '✔' : '',
-                daysAttended.has('Thursday') ? '✔' : '',
-                daysAttended.has('Friday') ? '✔' : '',
-            ];
-            sheetData.push(row);
+            worksheet.addRow({
+                studentName: studentName,
+                grade: studentInfo.grade,
+                monday: daysAttended.has('Monday') ? '✔' : '',
+                tuesday: daysAttended.has('Tuesday') ? '✔' : '',
+                wednesday: daysAttended.has('Wednesday') ? '✔' : '',
+                thursday: daysAttended.has('Thursday') ? '✔' : '',
+                friday: daysAttended.has('Friday') ? '✔' : '',
+            });
         });
 
-        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+        // Style the header
+        worksheet.getRow(1).eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF2E4756' }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        
+        // Style data rows with alternating colors
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber > 1) { // Start from the first data row
+                const isEvenRow = rowNumber % 2 === 0;
+                row.eachCell(cell => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: isEvenRow ? 'FFFFFFFF' : 'FFF0F0F0' } // White or Light Grey
+                    };
+                });
+            }
+        });
 
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
 
         const className = groupName.includes(' - ') ? groupName.split(' - ').pop().trim() : groupName;
