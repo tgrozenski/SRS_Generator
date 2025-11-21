@@ -205,6 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         pattern: 'solid',
                         fgColor: { argb: isEvenRow ? 'FFFFFFFF' : 'FFF0F0F0' } // White or Light Grey
                     };
+                    // Apply center alignment to checkmark cells (Monday to Friday columns)
+                    if (cell.value === '✔') {
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    }
                 });
             }
         });
