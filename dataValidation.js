@@ -52,25 +52,25 @@ function validateRow(row) {
         throw new DataValidationError('In time or Out time is missing for a "Present" outcome.', lineNumber, studentName, groupName, 'Missing Time');
     }
 
-    // Rule 2: "In time" must be less than "Out time".
+    // Rule 2: "In time" must be at least 1 minute before "Out time".
     if (inTime && outTime) {
         const inDateTime = new Date(inTime)
         const outDateTime = new Date(outTime)
 
-        if (inDateTime >= outDateTime) {
-            throw new DataValidationError(`In time (${inTime}) must be earlier than Out time (${outTime}).`, lineNumber, studentName, groupName, 'Invalid Time Order');
+        if (inDateTime.getTime() + 60000 > outDateTime.getTime()) {
+            throw new DataValidationError(`Out time (${outTime}) must be at least one minute after In time (${inTime}).`, lineNumber, studentName, groupName, 'Invalid Time Order');
         }
     }
 
-    // Rule 3: If Outcome is "Scheduled", no time should exist.
-    if (outcome === 'Scheduled' && (inTime || outTime)) {
-        throw new DataValidationError('Time entries should not exist for a "Scheduled" outcome.', lineNumber, studentName, groupName, 'Unexpected Time');
+    // Rule 3: If Outcome is "Scheduled" or "Absent", no time should exist.
+    if ((outcome === 'Scheduled' || outcome === 'Absent') && (inTime || outTime)) {
+        throw new DataValidationError('Time entries should not exist for a "Scheduled" or "Absent" outcome.', lineNumber, studentName, groupName, 'Unexpected Time');
     }
-
-    // Rule 4: AM/PM time should match AM/PM group.
-    if (groupName.includes('Book Lab') || groupName.includes('Think Cafe')) {
+ 
+    // Rule 4: AM/PM time should match AM/PM group if group name ends with AM/PM.
+    if (groupName.endsWith(' AM') || groupName.endsWith(' PM')) {
         if (inTime && outTime) {
-            const isGroupAM = groupName.includes('AM');
+            const isGroupAM = groupName.endsWith(' AM');
             const isInTimeAM = inTime.includes('AM');
             const isOutTimeAM = outTime.includes('AM');
 
