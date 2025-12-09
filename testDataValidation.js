@@ -125,3 +125,23 @@ test('Rule 4: should detect mismatch with new group names', () => {
     assert(errors.length === 1, `Expected 1 error, got ${errors.length}`);
     assert(errors[0].errorType === 'Time/Group Mismatch', `Expected 'Time/Group Mismatch', got ${errors[0].errorType}`);
 });
+
+test('should correctly identify student name with alternate header', () => {
+    const csvData = `"Outcome","In Time","Out Time","Student: Student Name and ID (Dedupe)","Program Day: Group: Class Name"
+"Present","","2025-01-01 05:00 PM","Clark Kent (001)","Metropolis Group"`;
+    const errors = validateCSVData(csvData);
+    assert(errors.length === 1, `Expected 1 error, but got ${errors.length}`);
+    assert(errors[0].errorType === 'Missing Time', `Expected 'Missing Time', got ${errors[0].errorType}`);
+    assert(errors[0].studentName === 'Clark Kent (001)', `Expected student name "Clark Kent (001)", but got "${errors[0].studentName}"`);
+});
+
+// Testing actual CSV's here
+const fs = require('fs');
+test('Testing an actual CSV here', () => {
+        const data = fs.readFileSync('Report.csv', 'utf8');
+        console.log('This is data', data.substring(0, 500))
+        const errors = validateCSVData(data);
+        //assert(errors.length === 3, `Expected 3 errors, got ${errors.length}`);
+        console.log("Errors here", errors)
+    }
+)

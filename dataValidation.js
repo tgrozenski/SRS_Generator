@@ -16,15 +16,37 @@ class DataValidationError extends Error {
 
 function parseCSVWithLineNumbers(text) {
     const lines = text.trim().split('\n');
-    const headerRegex = /"([^"]*)"/g;
-    const headers = [...lines[0].matchAll(headerRegex)].map(match => match[1]);
 
+    const parseLine = (line) => {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+                continue; // Don't add the quote to the value
+            }
+            if (char === ',' && !inQuotes) {
+                values.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        values.push(current);
+        return values;
+    };
+
+    if (lines.length === 0 || !lines[0].trim()) return [];
+    const headers = parseLine(lines[0]);
     const rows = [];
+
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
         if (!line.trim()) continue;
 
-        const values = [...line.matchAll(headerRegex)].map(match => match[1]);
+        const values = parseLine(line);
         if (values.length === headers.length) {
             let row = {};
             headers.forEach((header, index) => {
@@ -42,10 +64,10 @@ function validateRow(row) {
         'Outcome': outcome,
         'In Time': inTime,
         'Out Time': outTime,
-        'Student: Full Name': studentName,
         'Program Day: Group: Class Name': groupName,
         lineNumber
     } = row;
+    const studentName = row['Student: Full Name'] || row['Student: Student Name and ID (Dedupe)'];
 
     // Rule 1: If Outcome is "Present", both "In time" and "Out time" must exist.
     if (outcome === 'Present' && (!inTime || !outTime)) {
@@ -68,7 +90,7 @@ function validateRow(row) {
     }
  
     // Rule 4: AM/PM time should match AM/PM group if group name ends with AM/PM.
-    if (groupName.endsWith(' AM') || groupName.endsWith(' PM')) {
+    if (groupName && (groupName.endsWith(' AM') || groupName.endsWith(' PM'))) {
         if (inTime && outTime) {
             const isGroupAM = groupName.endsWith(' AM');
             const isInTimeAM = inTime.includes('AM');

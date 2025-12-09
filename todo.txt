@@ -1,7 +1,8 @@
 FIXES:
 
 FEATURES:
-- Improve xls styling for output files, header frozen, alternating grey white rows for easy scanning of sheet
+
+1. Add date as info for Error codes
 
 1. Duplicated Attendence
     - # of scans for a given student in any group on a weekly?, or monthly basis
