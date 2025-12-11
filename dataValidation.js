@@ -11,7 +11,7 @@ class DataValidationError extends Error {
 
     toReadableMessage() {
         const groupName = this.group.includes(' - ') ? this.group.split(' - ').pop().trim() : this.group;
-        return `On ${this.date} "${this.studentName}" in group "${groupName}", had a "${this.errorType}" error (SAR line: ${this.lineNumber})`;
+        return `On ${this.date} "${this.studentName}" in group "${groupName}" had a/n "${this.errorType}" error (SAR line: ${this.lineNumber})`;
     }
 }
 
