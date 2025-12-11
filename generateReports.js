@@ -39,8 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
             const csvData = event.target.result;
             try {
+                // 1. Validate the raw CSV data first
                 const validationErrors = validateCSVData(csvData);
-
                 if (validationErrors.length > 0) {
                     errorsSection.classList.remove('hidden');
                     validationErrors.forEach(error => {
@@ -51,21 +51,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                processData(csvData);
+                // 2. Parse the data with Papa Parse to get key-value objects
+                Papa.parse(csvData, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        try {
+                            if (results.errors.length) {
+                                let papaErrors = results.errors.map(e => `Error on row ${e.row}: ${e.message}`).join('\n');
+                                throw new Error(`CSV parsing failed:\n${papaErrors}`);
+                            }
 
-                if (validationErrors.length > 0) {
-                    statusElement.textContent = `Processing complete with ${validationErrors.length} warning(s).`;
-                    statusElement.classList.add('text-red-600');
-                } else {
-                    statusElement.textContent = 'Processing complete!';
-                }
+                            // 3. Process the parsed data
+                            processData(results.data);
 
-            } catch (error) {
-                console.error("Failed to process data:", error);
+                            // 4. Update final status
+                            if (validationErrors.length > 0) {
+                                statusElement.textContent = `Processing complete with ${validationErrors.length} warning(s).`;
+                                statusElement.classList.add('text-red-600');
+                            } else {
+                                statusElement.textContent = 'Processing complete!';
+                            }
+                        } catch (e) {
+                            console.error("Failed during processing:", e);
+                            statusElement.textContent = `Error: ${e.message}`;
+                            statusElement.classList.add('text-red-600');
+                        } finally {
+                            processBtn.disabled = false;
+                        }
+                    }
+                });
+
+            } catch (error) { // Catches errors from the initial validation step
+                console.error("Failed during validation:", error);
                 statusElement.textContent = `Error: ${error.message}`;
                 statusElement.classList.add('text-red-600');
-                alert(`An error occurred: ${error.message}`);
-            } finally {
                 processBtn.disabled = false;
             }
         };
@@ -78,24 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(selectedFile);
     });
 
-    function parseCSV(text) {
-        const lines = text.trim().split('\n');
-        const headerRegex = /"([^"]*)"/g;
-        const headers = [...lines[0].matchAll(headerRegex)].map(match => match[1]);
 
-        const rows = [];
-        for (let i = 1; i < lines.length; i++) {
-            const values = [...lines[i].matchAll(headerRegex)].map(match => match[1]);
-            if (values.length === headers.length) {
-                let row = {};
-                headers.forEach((header, index) => {
-                    row[header] = values[index];
-                });
-                rows.push(row);
-            }
-        }
-        return rows;
-    }
 
     function getDayOfWeek(dateStr) {
         try {
@@ -108,6 +111,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function reverseName(name) {
+        if (!name || name.includes(',')) {
+            return name
+        }
         const parts = name.split(' ').filter(p => p);
         if (parts.length > 1) {
             return `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
@@ -115,14 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return name;
     }
 
-    function processData(csvData) {
-        const allRows = parseCSV(csvData);
-        const groupNameKey = 'Program Day: Group: Class Name';
-
+    function processData(allRows) {
+        const groupNameKey = 'Program Day: Group: Class Name'
         const uniqueGroups = [...new Set(allRows.map(row => row[groupNameKey]).filter(Boolean))];
 
         if (uniqueGroups.length === 0) {
-            throw new Error(`Could not find any groups under the column "${groupNameKey}".`);
+            if (uniqueGroups.length === 0) {
+                throw new Error(`Could not find any groups under the column "${groupNameKey}".`);
+            }
         }
 
         reportListElement.innerHTML = '';
@@ -132,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const presentRows = allRows.filter(row => row['Outcome'] === 'Present' && row[groupNameKey] === groupName);
 
             presentRows.forEach(row => {
-                const studentName = reverseName(row['Student: Full Name']);
+                const studentName = reverseName(row['Student: Full Name'] || row['Student: Last, First']);
                 const sessionDate = row['Session Date'];
                 const dayOfWeek = getDayOfWeek(sessionDate);
                 const grade = row['Grade'] || '';
