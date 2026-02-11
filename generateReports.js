@@ -4,8 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const processBtn = document.getElementById('processBtn');
     const statusElement = document.getElementById('status');
     const reportListElement = document.getElementById('reportList');
-    const errorsSection = document.getElementById('errors-section');
-    const errorList = document.getElementById('errorList');
+     const errorsSection = document.getElementById('errors-section');
+     const errorList = document.getElementById('errorList');
+     const warningsSection = document.getElementById('warnings-section');
+     const warningList = document.getElementById('warningList');
 
     let selectedFile;
 
@@ -31,9 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
         processBtn.disabled = true;
         statusElement.textContent = 'Processing...';
         statusElement.classList.remove('text-red-600');
-        reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
-        errorList.innerHTML = '';
-        errorsSection.classList.add('hidden');
+         reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
+         errorList.innerHTML = '';
+         errorsSection.classList.add('hidden');
+         warningList.innerHTML = '';
+         warningsSection.classList.add('hidden');
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -52,35 +56,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // 2. Parse the data with Papa Parse to get key-value objects
-                Papa.parse(csvData, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        try {
-                            if (results.errors.length) {
-                                let papaErrors = results.errors.map(e => `Error on row ${e.row}: ${e.message}`).join('\n');
-                                throw new Error(`CSV parsing failed:\n${papaErrors}`);
-                            }
+                 Papa.parse(csvData, {
+                     header: true,
+                     skipEmptyLines: true,
+                     complete: async (results) => {
+                         try {
+                             if (results.errors.length) {
+                                 let papaErrors = results.errors.map(e => `Error on row ${e.row}: ${e.message}`).join('\n');
+                                 throw new Error(`CSV parsing failed:\n${papaErrors}`);
+                             }
 
-                            // 3. Process the parsed data
-                            processData(results.data);
+                             // 3. Process the parsed data
+                             await processData(results.data);
 
-                            // 4. Update final status
-                            if (validationErrors.length > 0) {
-                                statusElement.textContent = `Processing complete with ${validationErrors.length} warning(s).`;
-                                statusElement.classList.add('text-red-600');
-                            } else {
-                                statusElement.textContent = 'Processing complete!';
-                            }
-                        } catch (e) {
-                            console.error("Failed during processing:", e);
-                            statusElement.textContent = `Error: ${e.message}`;
-                            statusElement.classList.add('text-red-600');
-                        } finally {
-                            processBtn.disabled = false;
-                        }
-                    }
-                });
+                             // 4. Update final status
+                             statusElement.classList.remove('text-red-600', 'text-yellow-600');
+                             if (warningList.children.length > 0) {
+                                 statusElement.textContent = `Processing complete with ${warningList.children.length} template warning(s).`;
+                                 statusElement.classList.add('text-yellow-600');
+                             } else if (validationErrors.length > 0) {
+                                 statusElement.textContent = `Processing complete with ${validationErrors.length} data warning(s).`;
+                                 statusElement.classList.add('text-red-600');
+                             } else {
+                                 statusElement.textContent = 'Processing complete!';
+                             }
+                         } catch (e) {
+                             console.error("Failed during processing:", e);
+                             statusElement.textContent = `Error: ${e.message}`;
+                             statusElement.classList.add('text-red-600');
+                         } finally {
+                             processBtn.disabled = false;
+                         }
+                     }
+                 });
 
             } catch (error) { // Catches errors from the initial validation step
                 console.error("Failed during validation:", error);
@@ -121,42 +129,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return name;
     }
 
-    function processData(allRows) {
-        const groupNameKey = 'Program Day: Group: Class Name'
-        const uniqueGroups = [...new Set(allRows.map(row => row[groupNameKey]).filter(Boolean))];
+     async function processData(allRows) {
+         const groupNameKey = 'Program Day: Group: Class Name'
+         const uniqueGroups = [...new Set(allRows.map(row => row[groupNameKey]).filter(Boolean))];
 
-        if (uniqueGroups.length === 0) {
-            if (uniqueGroups.length === 0) {
-                throw new Error(`Could not find any groups under the column "${groupNameKey}".`);
-            }
-        }
+         if (uniqueGroups.length === 0) {
+             throw new Error(`Could not find any groups under the column "${groupNameKey}".`);
+         }
 
-        reportListElement.innerHTML = '';
+         reportListElement.innerHTML = '';
 
-        uniqueGroups.forEach(groupName => {
-            const attendanceData = {};
-            const presentRows = allRows.filter(row => row['Outcome'] === 'Present' && row[groupNameKey] === groupName);
+         // Process groups sequentially to avoid overwhelming browser
+         for (const groupName of uniqueGroups) {
+             const attendanceData = {};
+             const presentRows = allRows.filter(row => row['Outcome'] === 'Present' && row[groupNameKey] === groupName);
 
-            presentRows.forEach(row => {
-                const studentName = reverseName(row['Student: Full Name'] || row['Student: Last, First']);
-                const sessionDate = row['Session Date'];
-                const dayOfWeek = getDayOfWeek(sessionDate);
-                const grade = row['Grade'] || '';
+             presentRows.forEach(row => {
+                 const studentName = reverseName(row['Student: Full Name'] || row['Student: Last, First']);
+                 const sessionDate = row['Session Date'];
+                 const dayOfWeek = getDayOfWeek(sessionDate);
+                 const grade = row['Grade'] || '';
 
-                if (!attendanceData[studentName]) {
-                    attendanceData[studentName] = { grade: grade, days: new Set() };
-                }
-                if (!attendanceData[studentName].grade && grade) {
-                    attendanceData[studentName].grade = grade;
-                }
-                if (dayOfWeek) {
-                    attendanceData[studentName].days.add(dayOfWeek);
-                }
-            });
+                 if (!attendanceData[studentName]) {
+                     attendanceData[studentName] = { grade: grade, days: new Set() };
+                 }
+                 if (!attendanceData[studentName].grade && grade) {
+                     attendanceData[studentName].grade = grade;
+                 }
+                 if (dayOfWeek) {
+                     attendanceData[studentName].days.add(dayOfWeek);
+                 }
+             });
 
-            generateReport(groupName, attendanceData);
-        });
-    }
+             await generateReport(groupName, attendanceData);
+         }
+     }
 
     // Helper functions for template-based SRS generation
     function getCleanGroupName(fullGroupName) {
@@ -169,20 +176,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function populateSheetWithStudents(sheet, students, attendanceData, startRow = 10) {
-        // Populate names in column A and grades in column B
+        // Day to column mapping: Monday = C,D,E; Tuesday = F,G,H; Wednesday = I,J,K; Thursday = L,M,N; Friday = O,P,Q
+        const dayToColumns = {
+            'Monday': ['C', 'D', 'E'],
+            'Tuesday': ['F', 'G', 'H'],
+            'Wednesday': ['I', 'J', 'K'],
+            'Thursday': ['L', 'M', 'N'],
+            'Friday': ['O', 'P', 'Q']
+        };
+        
+        // Get all day columns for clearing
+        const allDayColumns = Object.values(dayToColumns).flat();
+        
+        // Populate names, grades, and attendance checkboxes
         students.forEach((studentName, index) => {
             const row = startRow + index;
             const studentInfo = attendanceData[studentName];
+            
+            // Name and grade (existing)
             sheet.getCell(`A${row}`).value = studentName;
             sheet.getCell(`B${row}`).value = studentInfo.grade || '';
+            
+            // Clear all day cells first (ensures clean state)
+            allDayColumns.forEach(col => {
+                sheet.getCell(`${col}${row}`).value = '';
+            });
+            
+            // Fill checkmarks for days present (3 cells per day)
+            studentInfo.days.forEach(day => {
+                const columns = dayToColumns[day];
+                if (columns) {
+                    columns.forEach(col => {
+                        sheet.getCell(`${col}${row}`).value = '✔'; // Same checkmark as legacy
+                    });
+                }
+            });
         });
         
-        // Clear any remaining rows in the student range (A10:A43, B10:B43)
+        // Clear any remaining rows in the student range (A10:A43, B10:B43, and day columns)
         const totalRows = 34; // A10:A43 inclusive
         for (let i = students.length; i < totalRows; i++) {
             const row = startRow + i;
             sheet.getCell(`A${row}`).value = '';
             sheet.getCell(`B${row}`).value = '';
+            // Also clear day cells for unused rows
+            allDayColumns.forEach(col => {
+                sheet.getCell(`${col}${row}`).value = '';
+            });
         }
     }
 
@@ -466,11 +506,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log(`✅ Template report generated for ${className}`);
             
-        } catch (templateError) {
-            console.error('❌ Template generation failed:', templateError);
-            console.warn('Falling back to legacy method...');
-            // Fallback to legacy generation
-            await generateReportLegacy(groupName, attendanceData);
-        }
+         } catch (templateError) {
+             console.error('❌ Template generation failed:', templateError);
+             console.warn('Falling back to legacy method...');
+             // Add warning to UI
+             const cleanGroupName = getCleanGroupName(groupName);
+             const warningItem = document.createElement('div');
+             warningItem.className = 'p-2 border-b border-yellow-100 last:border-b-0';
+             warningItem.textContent = `Template generation failed for "${cleanGroupName}". Using legacy format.`;
+             warningList.appendChild(warningItem);
+             warningsSection.classList.remove('hidden');
+             // Fallback to legacy generation
+             await generateReportLegacy(groupName, attendanceData);
+         }
     }
 });

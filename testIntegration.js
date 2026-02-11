@@ -3,18 +3,53 @@ const fs = require('fs').promises;
 
 // Simulate populateSheetWithStudents function
 function populateSheetWithStudents(sheet, students, attendanceData, startRow = 10) {
+    // Day to column mapping: Monday = C,D,E; Tuesday = F,G,H; Wednesday = I,J,K; Thursday = L,M,N; Friday = O,P,Q
+    const dayToColumns = {
+        'Monday': ['C', 'D', 'E'],
+        'Tuesday': ['F', 'G', 'H'],
+        'Wednesday': ['I', 'J', 'K'],
+        'Thursday': ['L', 'M', 'N'],
+        'Friday': ['O', 'P', 'Q']
+    };
+    
+    // Get all day columns for clearing
+    const allDayColumns = Object.values(dayToColumns).flat();
+    
+    // Populate names, grades, and attendance checkboxes
     students.forEach((studentName, index) => {
         const row = startRow + index;
         const studentInfo = attendanceData[studentName];
+        
+        // Name and grade (existing)
         sheet.getCell(`A${row}`).value = studentName;
         sheet.getCell(`B${row}`).value = studentInfo.grade || '';
+        
+        // Clear all day cells first (ensures clean state)
+        allDayColumns.forEach(col => {
+            sheet.getCell(`${col}${row}`).value = '';
+        });
+        
+        // Fill checkmarks for days present (3 cells per day)
+        studentInfo.days.forEach(day => {
+            const columns = dayToColumns[day];
+            if (columns) {
+                columns.forEach(col => {
+                    sheet.getCell(`${col}${row}`).value = '✔'; // Same checkmark as legacy
+                });
+            }
+        });
     });
     
+    // Clear any remaining rows in the student range (A10:A43, B10:B43, and day columns)
     const totalRows = 34; // A10:A43 inclusive
     for (let i = students.length; i < totalRows; i++) {
         const row = startRow + i;
         sheet.getCell(`A${row}`).value = '';
         sheet.getCell(`B${row}`).value = '';
+        // Also clear day cells for unused rows
+        allDayColumns.forEach(col => {
+            sheet.getCell(`${col}${row}`).value = '';
+        });
     }
 }
 
@@ -66,13 +101,29 @@ async function testIntegration() {
         
         // Simulate data for a group with 95 students (Think Cafe PM)
         const attendanceData = {};
+        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         for (let i = 1; i <= 95; i++) {
             const lastName = `Student${i}`;
             const firstName = `First${i}`;
             const studentName = `${lastName}, ${firstName}`;
+            const days = new Set();
+            
+            // Assign days based on student index for testing
+            // Student 1: Monday, Student 2: Tuesday, etc., wrap after Friday
+            const dayIndex = (i - 1) % daysOfWeek.length;
+            const primaryDay = daysOfWeek[dayIndex];
+            days.add(primaryDay);
+            
+            // Also assign some students multiple days
+            if (i % 7 === 0) {
+                // Every 7th student gets two days
+                const secondDayIndex = (dayIndex + 1) % daysOfWeek.length;
+                days.add(daysOfWeek[secondDayIndex]);
+            }
+            
             attendanceData[studentName] = {
                 grade: `${9 + (i % 4)}`, // Grades 9-12
-                days: new Set()
+                days: days
             };
         }
         
@@ -128,11 +179,34 @@ async function testIntegration() {
             }
             console.log(`    Populated ${populatedCount} students in rows 10-${10 + expectedRows - 1}`);
             
+            // Verify checkboxes for first student if sheet has students
+            if (sheetStudents.length > 0) {
+                const firstStudentRow = 10;
+                const firstStudentName = sheetStudents[0];
+                const firstStudentInfo = attendanceData[firstStudentName];
+                console.log(`    First student: ${firstStudentName}, days: ${Array.from(firstStudentInfo.days).join(', ')}`);
+                
+                // Check a sample day cell
+                if (firstStudentInfo.days.has('Monday')) {
+                    const mondayCell = sheet.getCell(`C${firstStudentRow}`).value;
+                    console.log(`    Monday checkbox C${firstStudentRow}: "${mondayCell}" (should be "✔")`);
+                }
+                // Check that a non-present day is empty (e.g., if Monday not present, check C cell)
+                const sampleDay = 'Monday';
+                const sampleCol = 'C';
+                const sampleCellValue = sheet.getCell(`${sampleCol}${firstStudentRow}`).value;
+                const shouldBeChecked = firstStudentInfo.days.has(sampleDay);
+                console.log(`    Sample cell ${sampleCol}${firstStudentRow}: "${sampleCellValue}" (${shouldBeChecked ? 'should be "✔"' : 'should be empty'})`);
+            }
+            
             // Verify clearing of unused rows
             if (sheetStudents.length < studentsPerSheet) {
                 const firstEmptyRow = 10 + sheetStudents.length;
                 const emptyCell = sheet.getCell(`A${firstEmptyRow}`).value;
                 console.log(`    First empty row A${firstEmptyRow}: "${emptyCell}" (should be empty)`);
+                // Also verify day cells are empty
+                const dayCell = sheet.getCell(`C${firstEmptyRow}`).value;
+                console.log(`    Day cell C${firstEmptyRow}: "${dayCell}" (should be empty)`);
             }
         }
         
