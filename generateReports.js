@@ -177,8 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sheet.getCell(`B${row}`).value = studentInfo.grade || '';
         });
         
-        // Clear any remaining rows in the student range (A10:A42, B10:B42)
-        const totalRows = 33; // A10:A42 inclusive
+        // Clear any remaining rows in the student range (A10:A43, B10:B43)
+        const totalRows = 34; // A10:A43 inclusive
         for (let i = students.length; i < totalRows; i++) {
             const row = startRow + i;
             sheet.getCell(`A${row}`).value = '';
@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Prepare data
             const sortedStudents = Object.keys(attendanceData).sort();
             console.log(`Total students: ${sortedStudents.length}`);
-            const studentsPerSheet = 33; // A10:A42 inclusive
+            const studentsPerSheet = 34; // A10:A43 inclusive
             const totalSheetsNeeded = Math.ceil(sortedStudents.length / studentsPerSheet);
             console.log(`Sheets needed: ${totalSheetsNeeded}`);
             
@@ -402,40 +402,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const cleanGroupName = getCleanGroupName(groupName);
             console.log(`Clean group name: ${cleanGroupName}`);
             
-            // 4. Ensure we have enough sheets (template has "Page 1" and "Page 2")
-            // Use existing sheets, clone "Page 1" if more needed
+            // 4. Ensure we have enough sheets (template has "Page 1", "Page 2", "Page 3", "Page 4")
+            // Use existing sheets, duplicate "Page 1" if more needed
             const templateSheet = templateWorkbook.getWorksheet('Page 1');
             if (!templateSheet) {
                 throw new Error('Template missing "Page 1" sheet');
             }
             console.log('Found Page 1 sheet');
             
-            // Handle multiple sheets
+            // Handle multiple sheets - template has 4 pre-formatted sheets
+            const sheetNames = ['Page 1', 'Page 2', 'Page 3', 'Page 4'];
             for (let sheetIndex = 0; sheetIndex < totalSheetsNeeded; sheetIndex++) {
                 let sheet;
-                if (sheetIndex === 0) {
-                    // First sheet uses the original Page 1 template
-                    sheet = templateSheet;
-                } else if (sheetIndex === 1) {
-                    // Second sheet: use Page 2 if it exists, otherwise duplicate Page 1
-                    const page2Sheet = templateWorkbook.getWorksheet('Page 2');
-                    if (page2Sheet) {
-                        sheet = page2Sheet;
-                        console.log('Using existing Page 2 sheet');
+                if (sheetIndex < sheetNames.length) {
+                    // Use existing pre-formatted sheet if available
+                    const sheetName = sheetNames[sheetIndex];
+                    sheet = templateWorkbook.getWorksheet(sheetName);
+                    if (sheet) {
+                        console.log(`Using existing ${sheetName} sheet`);
                     } else {
-                        sheet = templateWorkbook.addWorksheet(`Page ${sheetIndex + 1}`);
+                        // Sheet not found in template, duplicate Page 1
+                        sheet = templateWorkbook.addWorksheet(sheetName);
                         duplicateSheet(templateSheet, sheet);
-                        console.log('Page 2 not found, duplicated Page 1');
+                        console.log(`${sheetName} not found in template, duplicated Page 1`);
                     }
                 } else {
-                    // Additional sheets: duplicate Page 1 template
+                    // Beyond 4 sheets, duplicate Page 1 template
                     sheet = templateWorkbook.addWorksheet(`Page ${sheetIndex + 1}`);
                     duplicateSheet(templateSheet, sheet);
                     console.log(`Created Page ${sheetIndex + 1} sheet by duplication`);
                 }
                 
-                // Set group name in cell B4 for each sheet
-                sheet.getCell('B4').value = cleanGroupName;
+
                 
                 // Rename sheet to include group name? Keeping as Page X for simplicity
                 // sheet.name = `${cleanGroupName} - Page ${sheetIndex + 1}`;
@@ -446,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sheetStudents = sortedStudents.slice(startIdx, endIdx);
                 console.log(`Sheet ${sheetIndex + 1}: Students ${startIdx + 1}-${endIdx} (${sheetStudents.length} students)`);
                 
-                // Populate names (A10:A42) and grades (B10:B42)
+                // Populate names (A10:A43) and grades (B10:B43)
                 populateSheetWithStudents(sheet, sheetStudents, attendanceData, 10);
             }
             
