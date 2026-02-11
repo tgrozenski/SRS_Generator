@@ -176,43 +176,19 @@ document.addEventListener('DOMContentLoaded', () => {
             sheet.getCell(`A${row}`).value = studentName;
             sheet.getCell(`B${row}`).value = studentInfo.grade || '';
         });
-        
-        // Clear any remaining rows in the student range (A10:A42, B10:B42)
-        const totalRows = 33; // A10:A42 inclusive
-        for (let i = students.length; i < totalRows; i++) {
-            const row = startRow + i;
-            sheet.getCell(`A${row}`).value = '';
-            sheet.getCell(`B${row}`).value = '';
-        }
     }
 
     async function loadTemplateWorkbook() {
         try {
-            // Check if running from file:// protocol (fetch may fail due to CORS)
-            if (window.location.protocol === 'file:') {
-                console.warn('Running from file:// protocol - fetch may fail due to CORS. Consider using a local server.');
-            }
-            
-            console.log('Fetching template file...');
             const response = await fetch('srs_blank_template.xlsx');
             if (!response.ok) {
                 throw new Error(`Failed to load template: ${response.status} ${response.statusText}`);
             }
             const arrayBuffer = await response.arrayBuffer();
-            console.log('Template fetched, loading with ExcelJS...');
-            
-            // Create workbook instance and load the template
-            const workbook = new ExcelJS.Workbook();
-            await workbook.xlsx.load(arrayBuffer);
-            console.log('Template loaded into workbook');
+            const workbook = await ExcelJS.Workbook.xlsx.load(arrayBuffer);
             return workbook;
         } catch (error) {
             console.error('Template loading failed:', error);
-            // Provide more helpful error message
-            if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-                console.error('Network error detected. This may be due to CORS restrictions when running from file:// protocol.');
-                console.error('Please run this application using a local HTTP server (e.g., python -m http.server 8000)');
-            }
             throw error;
         }
     }
@@ -245,63 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Note: Cell styles and values are not copied - template should have them
         // but we will populate names/grades later
-    }
-    
-    // Duplicate a worksheet including cell values and styles
-    function duplicateSheet(sourceSheet, targetSheet) {
-        console.log(`Duplicating sheet "${sourceSheet.name}" to "${targetSheet.name}"`);
-        
-        // Copy column widths
-        sourceSheet.columns.forEach((col, idx) => {
-            if (col && col.width) {
-                targetSheet.getColumn(idx + 1).width = col.width;
-            }
-        });
-        
-        // Copy merge cells
-        if (sourceSheet.mergeCells && sourceSheet.mergeCells.length) {
-            sourceSheet.mergeCells.forEach(mergeRange => {
-                targetSheet.mergeCells(mergeRange);
-            });
-        }
-        
-        // Copy rows 1-44 (template range) - including values and basic styles
-        for (let rowNum = 1; rowNum <= 44; rowNum++) {
-            const sourceRow = sourceSheet.getRow(rowNum);
-            const targetRow = targetSheet.getRow(rowNum);
-            
-            // Copy row height
-            if (sourceRow.height) {
-                targetRow.height = sourceRow.height;
-            }
-            
-            // Copy each cell in the row
-            sourceRow.eachCell({ includeEmpty: true }, (sourceCell, colNumber) => {
-                const targetCell = targetRow.getCell(colNumber);
-                
-                // Copy value
-                targetCell.value = sourceCell.value;
-                
-                // Copy basic styling (font, fill, alignment, border)
-                if (sourceCell.font) {
-                    targetCell.font = { ...sourceCell.font };
-                }
-                if (sourceCell.fill) {
-                    targetCell.fill = { ...sourceCell.fill };
-                }
-                if (sourceCell.alignment) {
-                    targetCell.alignment = { ...sourceCell.alignment };
-                }
-                if (sourceCell.border) {
-                    targetCell.border = { ...sourceCell.border };
-                }
-                if (sourceCell.numFmt) {
-                    targetCell.numFmt = sourceCell.numFmt;
-                }
-            });
-        }
-        
-        console.log(`Sheet duplication complete`);
     }
 
     async function generateReport(groupName, attendanceData) {
@@ -383,24 +302,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Try template-based generation first, fall back to legacy if needed
-        console.log(`Generating report for: ${groupName}`);
         try {
-            console.log('Attempting template-based generation...');
-            
             // 1. Load template
             const templateWorkbook = await loadTemplateWorkbook();
-            console.log('Template loaded successfully');
             
             // 2. Prepare data
             const sortedStudents = Object.keys(attendanceData).sort();
-            console.log(`Total students: ${sortedStudents.length}`);
             const studentsPerSheet = 33; // A10:A42 inclusive
             const totalSheetsNeeded = Math.ceil(sortedStudents.length / studentsPerSheet);
-            console.log(`Sheets needed: ${totalSheetsNeeded}`);
             
             // 3. Get clean group name for sheet population
             const cleanGroupName = getCleanGroupName(groupName);
-            console.log(`Clean group name: ${cleanGroupName}`);
             
             // 4. Ensure we have enough sheets (template has "Page 1" and "Page 2")
             // Use existing sheets, clone "Page 1" if more needed
@@ -408,34 +320,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!templateSheet) {
                 throw new Error('Template missing "Page 1" sheet');
             }
-            console.log('Found Page 1 sheet');
+            
+            // Set group name in merged cell B4:G4
+            templateSheet.getCell('B4').value = cleanGroupName;
             
             // Handle multiple sheets
             for (let sheetIndex = 0; sheetIndex < totalSheetsNeeded; sheetIndex++) {
                 let sheet;
                 if (sheetIndex === 0) {
-                    // First sheet uses the original Page 1 template
-                    sheet = templateSheet;
+                    sheet = templateSheet; // Use first sheet as-is
                 } else if (sheetIndex === 1) {
-                    // Second sheet: use Page 2 if it exists, otherwise duplicate Page 1
-                    const page2Sheet = templateWorkbook.getWorksheet('Page 2');
-                    if (page2Sheet) {
-                        sheet = page2Sheet;
-                        console.log('Using existing Page 2 sheet');
-                    } else {
-                        sheet = templateWorkbook.addWorksheet(`Page ${sheetIndex + 1}`);
-                        duplicateSheet(templateSheet, sheet);
-                        console.log('Page 2 not found, duplicated Page 1');
-                    }
+                    sheet = templateWorkbook.getWorksheet('Page 2') || templateSheet;
                 } else {
-                    // Additional sheets: duplicate Page 1 template
+                    // Clone template sheet for additional pages
                     sheet = templateWorkbook.addWorksheet(`Page ${sheetIndex + 1}`);
-                    duplicateSheet(templateSheet, sheet);
-                    console.log(`Created Page ${sheetIndex + 1} sheet by duplication`);
+                    cloneSheetStructure(templateSheet, sheet);
                 }
-                
-                // Set group name in cell B4 for each sheet
-                sheet.getCell('B4').value = cleanGroupName;
                 
                 // Rename sheet to include group name? Keeping as Page X for simplicity
                 // sheet.name = `${cleanGroupName} - Page ${sheetIndex + 1}`;
@@ -444,14 +344,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const startIdx = sheetIndex * studentsPerSheet;
                 const endIdx = Math.min(startIdx + studentsPerSheet, sortedStudents.length);
                 const sheetStudents = sortedStudents.slice(startIdx, endIdx);
-                console.log(`Sheet ${sheetIndex + 1}: Students ${startIdx + 1}-${endIdx} (${sheetStudents.length} students)`);
                 
                 // Populate names (A10:A42) and grades (B10:B42)
                 populateSheetWithStudents(sheet, sheetStudents, attendanceData, 10);
+                
+                // If fewer than 33 students, clear remaining rows (optional)
+                // Leave as blank for now
             }
             
             // 5. Generate download
-            console.log('Generating Excel file...');
             const buffer = await templateWorkbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = URL.createObjectURL(blob);
@@ -466,11 +367,8 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             reportListElement.appendChild(reportItem);
             
-            console.log(`✅ Template report generated for ${className}`);
-            
         } catch (templateError) {
-            console.error('❌ Template generation failed:', templateError);
-            console.warn('Falling back to legacy method...');
+            console.warn('Template generation failed, falling back to legacy method:', templateError);
             // Fallback to legacy generation
             await generateReportLegacy(groupName, attendanceData);
         }
