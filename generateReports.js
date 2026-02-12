@@ -184,6 +184,21 @@ document.addEventListener('DOMContentLoaded', () => {
         sheet.getCell('N3').value = '';
     }
 
+    function addNotesSection(sheet) {
+        // Merge rows 5-7, columns A-Q for notes section
+        sheet.mergeCells('A5', 'Q7');
+        const notesCell = sheet.getCell('A5');
+        notesCell.value = 'Notes:';
+        notesCell.font = { bold: true, size: 9, name: 'Calibri' };
+        notesCell.alignment = { vertical: 'top', wrapText: true };
+        notesCell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+    }
+
     function populateSheetWithStudents(sheet, students, attendanceData, startRow = 10) {
         // Day to column mapping: Monday = C,D,E; Tuesday = F,G,H; Wednesday = I,J,K; Thursday = L,M,N; Friday = O,P,Q
         const dayToColumns = {
@@ -401,6 +416,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Set group name in merged cell B3:G3
                 setGroupNameInSheet(sheet, groupName);
+                
+                // Add notes section in rows 5-7, columns A-Q
+                addNotesSection(sheet);
                 
                 // Populate names (A10:A43) and grades (B10:B43)
                 populateSheetWithStudents(sheet, sheetStudents, attendanceData, 10);
