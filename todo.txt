@@ -1,8 +1,0 @@
-FIXES:
-
-FEATURES:
-
-1. Add date as info for Error codes
-
-1. Duplicated Attendence
-    - # of scans for a given student in any group on a weekly?, or monthly basis

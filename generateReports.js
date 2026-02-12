@@ -4,10 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const processBtn = document.getElementById('processBtn');
     const statusElement = document.getElementById('status');
     const reportListElement = document.getElementById('reportList');
-     const errorsSection = document.getElementById('errors-section');
-     const errorList = document.getElementById('errorList');
-     const warningsSection = document.getElementById('warnings-section');
-     const warningList = document.getElementById('warningList');
+    const errorsSection = document.getElementById('errors-section');
+    const errorList = document.getElementById('errorList');
+    const warningsSection = document.getElementById('warnings-section');
+    const warningList = document.getElementById('warningList');
 
     let selectedFile;
 
@@ -33,11 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
         processBtn.disabled = true;
         statusElement.textContent = 'Processing...';
         statusElement.classList.remove('text-red-600');
-         reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
-         errorList.innerHTML = '';
-         errorsSection.classList.add('hidden');
-         warningList.innerHTML = '';
-         warningsSection.classList.add('hidden');
+        reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
+        errorList.innerHTML = '';
+        errorsSection.classList.add('hidden');
+        warningList.innerHTML = '';
+        warningsSection.classList.add('hidden');
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -175,6 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return cleanName.replace(/[^a-z0-9]/gi, '_');
     }
 
+    function setGroupNameInSheet(sheet, groupName) {
+        // Set full group name in merged cell B3:G3 (row 3, columns B through G)
+        sheet.getCell('B3').value = groupName;
+        
+        // Clear placeholder data from sample template
+        sheet.getCell('I3').value = '';
+        sheet.getCell('N3').value = '';
+    }
+
     function populateSheetWithStudents(sheet, students, attendanceData, startRow = 10) {
         // Day to column mapping: Monday = C,D,E; Tuesday = F,G,H; Wednesday = I,J,K; Thursday = L,M,N; Friday = O,P,Q
         const dayToColumns = {
@@ -257,92 +266,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Clone a worksheet's structure (column widths, merge cells, basic formatting)
-    function cloneSheetStructure(sourceSheet, targetSheet) {
-        // Copy column widths
-        sourceSheet.columns.forEach((col, idx) => {
-            if (col && col.width) {
-                targetSheet.getColumn(idx + 1).width = col.width;
-            }
-        });
-        
-        // Copy merge cells
-        if (sourceSheet.mergeCells && sourceSheet.mergeCells.length) {
-            sourceSheet.mergeCells.forEach(mergeRange => {
-                targetSheet.mergeCells(mergeRange);
-            });
-        }
-        
-        // Copy row heights for key rows (optional)
-        // We'll copy rows 1-44 (the template range)
-        for (let rowNum = 1; rowNum <= 44; rowNum++) {
-            const sourceRow = sourceSheet.getRow(rowNum);
-            const targetRow = targetSheet.getRow(rowNum);
-            if (sourceRow.height) {
-                targetRow.height = sourceRow.height;
-            }
-        }
-        
-        // Note: Cell styles and values are not copied - template should have them
-        // but we will populate names/grades later
-    }
+
     
-    // Duplicate a worksheet including cell values and styles
-    function duplicateSheet(sourceSheet, targetSheet) {
-        console.log(`Duplicating sheet "${sourceSheet.name}" to "${targetSheet.name}"`);
-        
-        // Copy column widths
-        sourceSheet.columns.forEach((col, idx) => {
-            if (col && col.width) {
-                targetSheet.getColumn(idx + 1).width = col.width;
-            }
-        });
-        
-        // Copy merge cells
-        if (sourceSheet.mergeCells && sourceSheet.mergeCells.length) {
-            sourceSheet.mergeCells.forEach(mergeRange => {
-                targetSheet.mergeCells(mergeRange);
-            });
-        }
-        
-        // Copy rows 1-44 (template range) - including values and basic styles
-        for (let rowNum = 1; rowNum <= 44; rowNum++) {
-            const sourceRow = sourceSheet.getRow(rowNum);
-            const targetRow = targetSheet.getRow(rowNum);
-            
-            // Copy row height
-            if (sourceRow.height) {
-                targetRow.height = sourceRow.height;
-            }
-            
-            // Copy each cell in the row
-            sourceRow.eachCell({ includeEmpty: true }, (sourceCell, colNumber) => {
-                const targetCell = targetRow.getCell(colNumber);
-                
-                // Copy value
-                targetCell.value = sourceCell.value;
-                
-                // Copy basic styling (font, fill, alignment, border)
-                if (sourceCell.font) {
-                    targetCell.font = { ...sourceCell.font };
-                }
-                if (sourceCell.fill) {
-                    targetCell.fill = { ...sourceCell.fill };
-                }
-                if (sourceCell.alignment) {
-                    targetCell.alignment = { ...sourceCell.alignment };
-                }
-                if (sourceCell.border) {
-                    targetCell.border = { ...sourceCell.border };
-                }
-                if (sourceCell.numFmt) {
-                    targetCell.numFmt = sourceCell.numFmt;
-                }
-            });
-        }
-        
-        console.log(`Sheet duplication complete`);
-    }
+
 
     async function generateReport(groupName, attendanceData) {
         // Legacy report generation (original implementation)
@@ -443,40 +369,29 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Clean group name: ${cleanGroupName}`);
             
             // 4. Ensure we have enough sheets (template has "Page 1", "Page 2", "Page 3", "Page 4")
-            // Use existing sheets, duplicate "Page 1" if more needed
+            // Use only existing pre-formatted sheets
+            const sheetNames = ['Page 1', 'Page 2', 'Page 3', 'Page 4'];
+            
+            // Check capacity - max 136 students (34 per sheet × 4 sheets)
+            if (totalSheetsNeeded > sheetNames.length) {
+                throw new Error(`Group "${cleanGroupName}" has ${sortedStudents.length} students, exceeding maximum capacity of 136 students (4 sheets). Falling back to legacy format.`);
+            }
+            
+            // Verify Page 1 exists (basic template validation)
             const templateSheet = templateWorkbook.getWorksheet('Page 1');
             if (!templateSheet) {
                 throw new Error('Template missing "Page 1" sheet');
             }
             console.log('Found Page 1 sheet');
             
-            // Handle multiple sheets - template has 4 pre-formatted sheets
-            const sheetNames = ['Page 1', 'Page 2', 'Page 3', 'Page 4'];
+            // Handle multiple sheets using only existing template sheets
             for (let sheetIndex = 0; sheetIndex < totalSheetsNeeded; sheetIndex++) {
-                let sheet;
-                if (sheetIndex < sheetNames.length) {
-                    // Use existing pre-formatted sheet if available
-                    const sheetName = sheetNames[sheetIndex];
-                    sheet = templateWorkbook.getWorksheet(sheetName);
-                    if (sheet) {
-                        console.log(`Using existing ${sheetName} sheet`);
-                    } else {
-                        // Sheet not found in template, duplicate Page 1
-                        sheet = templateWorkbook.addWorksheet(sheetName);
-                        duplicateSheet(templateSheet, sheet);
-                        console.log(`${sheetName} not found in template, duplicated Page 1`);
-                    }
-                } else {
-                    // Beyond 4 sheets, duplicate Page 1 template
-                    sheet = templateWorkbook.addWorksheet(`Page ${sheetIndex + 1}`);
-                    duplicateSheet(templateSheet, sheet);
-                    console.log(`Created Page ${sheetIndex + 1} sheet by duplication`);
+                const sheetName = sheetNames[sheetIndex];
+                const sheet = templateWorkbook.getWorksheet(sheetName);
+                if (!sheet) {
+                    throw new Error(`Template missing "${sheetName}" sheet`);
                 }
-                
-
-                
-                // Rename sheet to include group name? Keeping as Page X for simplicity
-                // sheet.name = `${cleanGroupName} - Page ${sheetIndex + 1}`;
+                console.log(`Using ${sheetName} sheet`);
                 
                 // Calculate student range for this sheet
                 const startIdx = sheetIndex * studentsPerSheet;
@@ -484,9 +399,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sheetStudents = sortedStudents.slice(startIdx, endIdx);
                 console.log(`Sheet ${sheetIndex + 1}: Students ${startIdx + 1}-${endIdx} (${sheetStudents.length} students)`);
                 
+                // Set group name in merged cell B3:G3
+                setGroupNameInSheet(sheet, groupName);
+                
                 // Populate names (A10:A43) and grades (B10:B43)
                 populateSheetWithStudents(sheet, sheetStudents, attendanceData, 10);
             }
+
             
             // 5. Generate download
             console.log('Generating Excel file...');
@@ -499,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const reportItem = document.createElement('div');
             reportItem.className = 'report-item flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0';
             reportItem.innerHTML = `
-                <span class="font-medium text-gray-800">${className} (Template)</span>
+                <span class="font-medium text-gray-800">${className}</span>
                 <a href="${url}" download="${safeGroupName}.xlsx" class="bg-green-500 text-white text-sm font-semibold py-1 px-3 rounded-md hover:bg-green-600 transition-colors">Download</a>
             `;
             reportListElement.appendChild(reportItem);

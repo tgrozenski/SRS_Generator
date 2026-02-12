@@ -53,42 +53,7 @@ function populateSheetWithStudents(sheet, students, attendanceData, startRow = 1
     }
 }
 
-// Simulate duplicateSheet function
-function duplicateSheet(sourceSheet, targetSheet) {
-    // Copy column widths
-    sourceSheet.columns.forEach((col, idx) => {
-        if (col && col.width) {
-            targetSheet.getColumn(idx + 1).width = col.width;
-        }
-    });
-    
-    // Copy merge cells
-    if (sourceSheet.mergeCells && sourceSheet.mergeCells.length) {
-        sourceSheet.mergeCells.forEach(mergeRange => {
-            targetSheet.mergeCells(mergeRange);
-        });
-    }
-    
-    // Copy rows 1-44
-    for (let rowNum = 1; rowNum <= 44; rowNum++) {
-        const sourceRow = sourceSheet.getRow(rowNum);
-        const targetRow = targetSheet.getRow(rowNum);
-        
-        if (sourceRow.height) {
-            targetRow.height = sourceRow.height;
-        }
-        
-        sourceRow.eachCell({ includeEmpty: true }, (sourceCell, colNumber) => {
-            const targetCell = targetRow.getCell(colNumber);
-            targetCell.value = sourceCell.value;
-            if (sourceCell.font) targetCell.font = { ...sourceCell.font };
-            if (sourceCell.fill) targetCell.fill = { ...sourceCell.fill };
-            if (sourceCell.alignment) targetCell.alignment = { ...sourceCell.alignment };
-            if (sourceCell.border) targetCell.border = { ...sourceCell.border };
-            if (sourceCell.numFmt) targetCell.numFmt = sourceCell.numFmt;
-        });
-    }
-}
+
 
 async function testIntegration() {
     console.log('Integration test with template...\n');
@@ -134,30 +99,29 @@ async function testIntegration() {
         console.log(`✅ Simulating ${sortedStudents.length} students, ${totalSheetsNeeded} sheets needed`);
         
         const sheetNames = ['Page 1', 'Page 2', 'Page 3', 'Page 4'];
+        
+        // Check capacity - max 136 students (34 per sheet × 4 sheets)
+        if (totalSheetsNeeded > sheetNames.length) {
+            throw new Error(`Group has ${sortedStudents.length} students, exceeding maximum capacity of 136 students (4 sheets).`);
+        }
+        
+        // Verify Page 1 exists (basic template validation)
         const templateSheet = workbook.getWorksheet('Page 1');
         if (!templateSheet) throw new Error('Missing Page 1');
         
-        // Process sheets
+        // Process sheets using only existing template sheets
         for (let sheetIndex = 0; sheetIndex < totalSheetsNeeded; sheetIndex++) {
-            let sheet;
-            if (sheetIndex < sheetNames.length) {
-                const sheetName = sheetNames[sheetIndex];
-                sheet = workbook.getWorksheet(sheetName);
-                if (!sheet) {
-                    sheet = workbook.addWorksheet(sheetName);
-                    duplicateSheet(templateSheet, sheet);
-                    console.log(`  ${sheetName} not found, duplicated Page 1`);
-                } else {
-                    console.log(`  Using existing ${sheetName} sheet`);
-                }
-            } else {
-                sheet = workbook.addWorksheet(`Page ${sheetIndex + 1}`);
-                duplicateSheet(templateSheet, sheet);
-                console.log(`  Created Page ${sheetIndex + 1} by duplication`);
+            const sheetName = sheetNames[sheetIndex];
+            const sheet = workbook.getWorksheet(sheetName);
+            if (!sheet) {
+                throw new Error(`Template missing "${sheetName}" sheet`);
             }
+            console.log(`  Using ${sheetName} sheet`);
             
-            // Set group name
-            sheet.getCell('B4').value = 'Think Cafe PM (Test)';
+            // Set group name in merged cell B3:G3 and clear placeholders
+            sheet.getCell('B3').value = 'Think Cafe PM (Test)';
+            sheet.getCell('I3').value = '';
+            sheet.getCell('N3').value = '';
             
             // Calculate student range
             const startIdx = sheetIndex * studentsPerSheet;
