@@ -222,16 +222,23 @@ document.addEventListener('DOMContentLoaded', () => {
             sheet.getCell(`B${row}`).value = studentInfo.grade || '';
             
             // Clear all day cells first (ensures clean state)
-            allDayColumns.forEach(col => {
-                sheet.getCell(`${col}${row}`).value = '';
-            });
+            //allDayColumns.forEach(col => {
+                //sheet.getCell(`${col}${row}`).value = '';
+            //});
             
             // Fill checkmarks for days present (3 cells per day)
             studentInfo.days.forEach(day => {
                 const columns = dayToColumns[day];
                 if (columns) {
                     columns.forEach(col => {
-                        sheet.getCell(`${col}${row}`).value = '✔'; // Same checkmark as legacy
+                        cell = sheet.getCell(`${col}${row}`);
+                        cell.value = ',';
+                        cell.font = {
+                            name: 'Calibri',
+                            family: 2,
+                            size: 6,
+                            bold: false 
+                        }
                     });
                 }
             });
