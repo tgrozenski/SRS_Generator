@@ -14,16 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load classes data once at startup
     async function loadClassesData() {
         try {
-            // console.log('Loading classes data...');
+            console.log('Loading classes data...');
             const response = await fetch('classes.json');
             if (!response.ok) {
-                // console.warn('Failed to load classes.json:', response.status, response.statusText);
+                console.warn('Failed to load classes.json:', response.status, response.statusText);
                 return;
             }
             classesData = await response.json();
-            // console.log('Classes data loaded successfully');
+            console.log('Classes data loaded successfully');
         } catch (error) {
-            // console.error('Error loading classes data:', error);
+            console.error('Error loading classes data:', error);
         }
     }
 
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                  statusElement.textContent = 'Processing complete!';
                              }
                          } catch (e) {
-                             // console.error("Failed during processing:", e);
+                             console.error("Failed during processing:", e);
                              statusElement.textContent = `Error: ${e.message}`;
                              statusElement.classList.add('text-red-600');
                          }
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  });
 
             } catch (error) { // Catches errors from the initial validation step
-                // console.error("Failed during validation:", error);
+                console.error("Failed during validation:", error);
                 statusElement.textContent = `Error: ${error.message}`;
                 statusElement.classList.add('text-red-600');
             }
@@ -226,32 +226,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setOYL(sheet, groupName) {
-        // console.log(`setOYL called for group: "${groupName}"`);
+        console.log(`setOYL called for group: "${groupName}"`);
         const classInfo = findClassInfo(groupName);
-        // console.log(`Found classInfo:`, classInfo);
+        console.log(`Found classInfo:`, classInfo);
         if (classInfo && classInfo.programLeader) {
-            // console.log(`Setting I3 to: "${classInfo.programLeader}"`);
+            console.log(`Setting I3 to: "${classInfo.programLeader}"`);
             sheet.getCell('I3').value = classInfo.programLeader;
             sheet.getCell('I3').font = { size: 9, name: 'Calibri' };
-            // console.log(`I3 value after set:`, sheet.getCell('I3').value);
+            console.log(`I3 value after set:`, sheet.getCell('I3').value);
         } else {
-            // console.log(`No programLeader found, clearing I3`);
+            console.log(`No programLeader found, clearing I3`);
             sheet.getCell('I3').value = '';
         }
     }
 
     function setRoomTime(sheet, groupName) {
-        // console.log(`setRoomTime called for group: "${groupName}"`);
+        console.log(`setRoomTime called for group: "${groupName}"`);
         const classInfo = findClassInfo(groupName);
-        // console.log(`Found classInfo:`, classInfo);
+        console.log(`Found classInfo:`, classInfo);
         if (classInfo && classInfo.room && classInfo.startTime && classInfo.endTime) {
             const roomTimeString = `${classInfo.room}/${classInfo.startTime} - ${classInfo.endTime}`;
-            // console.log(`Setting N3 to: "${roomTimeString}"`);
+            console.log(`Setting N3 to: "${roomTimeString}"`);
             sheet.getCell('N3').value = roomTimeString;
             sheet.getCell('N3').font = { size: 9, name: 'Calibri' };
-            // console.log(`N3 value after set:`, sheet.getCell('N3').value);
+            console.log(`N3 value after set:`, sheet.getCell('N3').value);
         } else {
-            // console.log(`Missing room/time data, clearing N3`);
+            console.log(`Missing room/time data, clearing N3`);
             sheet.getCell('N3').value = '';
         }
     }
@@ -334,28 +334,28 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Check if running from file:// protocol (fetch may fail due to CORS)
             if (window.location.protocol === 'file:') {
-                // console.warn('Running from file:// protocol - fetch may fail due to CORS. Consider using a local server.');
+                console.warn('Running from file:// protocol - fetch may fail due to CORS. Consider using a local server.');
             }
             
-            // console.log('Fetching template file...');
+            console.log('Fetching template file...');
             const response = await fetch('srs_blank_template.xlsx');
             if (!response.ok) {
                 throw new Error(`Failed to load template: ${response.status} ${response.statusText}`);
             }
             const arrayBuffer = await response.arrayBuffer();
-            // console.log('Template fetched, loading with ExcelJS...');
+            console.log('Template fetched, loading with ExcelJS...');
             
             // Create workbook instance and load the template
             const workbook = new ExcelJS.Workbook();
             await workbook.xlsx.load(arrayBuffer);
-            // console.log('Template loaded into workbook');
+            console.log('Template loaded into workbook');
             return workbook;
         } catch (error) {
-            // console.error('Template loading failed:', error);
+            console.error('Template loading failed:', error);
             // Provide more helpful error message
             if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-                // console.error('Network error detected. This may be due to CORS restrictions when running from file:// protocol.');
-                // console.error('Please run this application using a local HTTP server (e.g., python -m http.server 8000)');
+                console.error('Network error detected. This may be due to CORS restrictions when running from file:// protocol.');
+                console.error('Please run this application using a local HTTP server (e.g., python -m http.server 8000)');
             }
             throw error;
         }
@@ -444,24 +444,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Try template-based generation first, fall back to legacy if needed
-        // console.log(`Generating report for: ${groupName}`);
+        console.log(`Generating report for: ${groupName}`);
         try {
-            // console.log('Attempting template-based generation...');
+            console.log('Attempting template-based generation...');
             
             // 1. Load template
             const templateWorkbook = await loadTemplateWorkbook();
-            // console.log('Template loaded successfully');
+            console.log('Template loaded successfully');
             
             // 2. Prepare data
             const sortedStudents = Object.keys(attendanceData).sort();
-            // console.log(`Total students: ${sortedStudents.length}`);
+            console.log(`Total students: ${sortedStudents.length}`);
             const studentsPerSheet = 34; // A10:A43 inclusive
             const totalSheetsNeeded = Math.ceil(sortedStudents.length / studentsPerSheet);
-            // console.log(`Sheets needed: ${totalSheetsNeeded}`);
+            console.log(`Sheets needed: ${totalSheetsNeeded}`);
             
             // 3. Get clean group name for sheet population
             const cleanGroupName = getCleanGroupName(groupName);
-            // console.log(`Clean group name: ${cleanGroupName}`);
+            console.log(`Clean group name: ${cleanGroupName}`);
             
             // 4. Ensure we have enough sheets (template has "Page 1", "Page 2", "Page 3", "Page 4")
             // Use only existing pre-formatted sheets
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!templateSheet) {
                 throw new Error('Template missing "Page 1" sheet');
             }
-            // console.log('Found Page 1 sheet');
+            console.log('Found Page 1 sheet');
             
             // Handle multiple sheets using only existing template sheets
             for (let sheetIndex = 0; sheetIndex < totalSheetsNeeded; sheetIndex++) {
@@ -486,13 +486,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!sheet) {
                     throw new Error(`Template missing "${sheetName}" sheet`);
                 }
-                // console.log(`Using ${sheetName} sheet`);
+                console.log(`Using ${sheetName} sheet`);
                 
                 // Calculate student range for this sheet
                 const startIdx = sheetIndex * studentsPerSheet;
                 const endIdx = Math.min(startIdx + studentsPerSheet, sortedStudents.length);
                 const sheetStudents = sortedStudents.slice(startIdx, endIdx);
-                // console.log(`Sheet ${sheetIndex + 1}: Students ${startIdx + 1}-${endIdx} (${sheetStudents.length} students)`);
+                console.log(`Sheet ${sheetIndex + 1}: Students ${startIdx + 1}-${endIdx} (${sheetStudents.length} students)`);
                 
                 // Set group name in merged cell B3:G3
                 setGroupNameInSheet(sheet, groupName);
@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             
             // 5. Generate download
-            // console.log('Generating Excel file...');
+            console.log('Generating Excel file...');
             const buffer = await templateWorkbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = URL.createObjectURL(blob);
@@ -527,11 +527,11 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             reportListElement.appendChild(reportItem);
             
-            // console.log(`✅ Template report generated for ${className}`);
+            console.log(`✅ Template report generated for ${className}`);
             
          } catch (templateError) {
-             // console.error('❌ Template generation failed:', templateError);
-             // console.warn('Falling back to legacy method...');
+             console.error('❌ Template generation failed:', templateError);
+             console.warn('Falling back to legacy method...');
              // Add warning to UI
              const cleanGroupName = getCleanGroupName(groupName);
              const warningItem = document.createElement('div');
