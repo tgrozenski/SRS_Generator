@@ -3,10 +3,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileNameElement = document.getElementById('fileName');
     const statusElement = document.getElementById('status');
     const reportListElement = document.getElementById('reportList');
+    const reportCountElement = document.getElementById('reportCount');
     const errorsSection = document.getElementById('errors-section');
     const errorList = document.getElementById('errorList');
+    const errorCountElement = document.getElementById('errorCount');
     const warningsSection = document.getElementById('warnings-section');
     const warningList = document.getElementById('warningList');
+    const warningCountElement = document.getElementById('warningCount');
+    const studentIdsSection = document.getElementById('student-ids-section');
+    const studentIdsList = document.getElementById('studentIdsList');
+    const copyStudentIdsBtn = document.getElementById('copyStudentIds');
 
     let selectedFile;
     let classesData = {};
@@ -55,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
         errorsSection.classList.add('hidden');
         warningList.innerHTML = '';
         warningsSection.classList.add('hidden');
+        studentIdsList.innerHTML = '';
+        studentIdsSection.classList.add('hidden');
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -64,12 +72,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const validationErrors = validateCSVData(csvData);
                 if (validationErrors.length > 0) {
                     errorsSection.classList.remove('hidden');
+                    errorCountElement.textContent = validationErrors.length;
+                    
+                    const studentIdsWithErrors = [];
+                    
                     validationErrors.forEach(error => {
                         const errorItem = document.createElement('div');
                         errorItem.className = 'p-2 border-b border-red-100 last:border-b-0';
                         errorItem.textContent = error.toReadableMessage();
                         errorList.appendChild(errorItem);
+                        
+                        if (error.studentId) {
+                            studentIdsWithErrors.push(error.studentId);
+                        }
                     });
+                    
+                    const uniqueStudentIds = [...new Set(studentIdsWithErrors)];
+                    if (uniqueStudentIds.length > 0) {
+                        studentIdsList.textContent = uniqueStudentIds.join(', ');
+                        studentIdsSection.classList.remove('hidden');
+                    }
                 }
 
                 // 2. Parse the data with Papa Parse to get key-value objects
@@ -86,17 +108,19 @@ document.addEventListener('DOMContentLoaded', () => {
                              // 3. Process the parsed data
                              await processData(results.data);
 
-                             // 4. Update final status
-                             statusElement.classList.remove('text-red-600', 'text-yellow-600');
-                             if (warningList.children.length > 0) {
-                                 statusElement.textContent = `Processing complete with ${warningList.children.length} template warning(s).`;
-                                 statusElement.classList.add('text-yellow-600');
-                             } else if (validationErrors.length > 0) {
-                                 statusElement.textContent = `Processing complete with ${validationErrors.length} data warning(s).`;
-                                 statusElement.classList.add('text-red-600');
-                             } else {
-                                 statusElement.textContent = 'Processing complete!';
-                             }
+                              // 4. Update final status
+                              statusElement.classList.remove('text-red-600', 'text-yellow-600', 'text-green-600');
+                              if (warningList.children.length > 0) {
+                                  warningCountElement.textContent = warningList.children.length;
+                                  statusElement.textContent = `Processing complete with ${warningList.children.length} template warning(s).`;
+                                  statusElement.classList.add('text-yellow-600');
+                              } else if (validationErrors.length > 0) {
+                                  statusElement.textContent = 'Processing complete!';
+                                  statusElement.classList.add('text-green-600');
+                              } else {
+                                  statusElement.textContent = 'Processing complete!';
+                                  statusElement.classList.add('text-green-600');
+                              }
                          } catch (e) {
                              // console.error("Failed during processing:", e);
                              statusElement.textContent = `Error: ${e.message}`;
@@ -174,9 +198,15 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
              });
 
-             await generateReport(groupName, attendanceData);
-         }
-     }
+              await generateReport(groupName, attendanceData);
+          }
+
+          const reportItems = reportListElement.querySelectorAll('.report-item');
+          if (reportItems.length > 0) {
+              reportCountElement.textContent = `${reportItems.length} report${reportItems.length !== 1 ? 's' : ''}`;
+              reportCountElement.classList.remove('hidden');
+          }
+      }
 
     // Helper functions for template-based SRS generation
     function getCleanGroupName(fullGroupName) {
@@ -539,8 +569,29 @@ document.addEventListener('DOMContentLoaded', () => {
              warningItem.textContent = `Template generation failed for "${cleanGroupName}". Using legacy format.`;
              warningList.appendChild(warningItem);
              warningsSection.classList.remove('hidden');
-             // Fallback to legacy generation
-             await generateReportLegacy(groupName, attendanceData);
-         }
+              // Fallback to legacy generation
+              await generateReportLegacy(groupName, attendanceData);
+          }
     }
+
+    copyStudentIdsBtn.addEventListener('click', async () => {
+        const idsText = studentIdsList.textContent;
+        if (idsText) {
+            try {
+                await navigator.clipboard.writeText(idsText);
+                const originalText = copyStudentIdsBtn.innerHTML;
+                copyStudentIdsBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Copied!
+                `;
+                setTimeout(() => {
+                    copyStudentIdsBtn.innerHTML = originalText;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        }
+    });
 });
