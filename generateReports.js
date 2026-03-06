@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const csvFileInput = document.getElementById('csvFileInput');
     const fileNameElement = document.getElementById('fileName');
-    const statusElement = document.getElementById('status');
     const reportListElement = document.getElementById('reportList');
     const reportCountElement = document.getElementById('reportCount');
     const errorsSection = document.getElementById('errors-section');
@@ -54,8 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Reset UI
-        statusElement.textContent = 'Processing...';
-        statusElement.classList.remove('text-red-600');
         reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
         errorList.innerHTML = '';
         errorsSection.classList.add('hidden');
@@ -108,37 +105,18 @@ document.addEventListener('DOMContentLoaded', () => {
                              // 3. Process the parsed data
                              await processData(results.data);
 
-                              // 4. Update final status
-                              statusElement.classList.remove('text-red-600', 'text-yellow-600', 'text-green-600');
-                              if (warningList.children.length > 0) {
-                                  warningCountElement.textContent = warningList.children.length;
-                                  statusElement.textContent = `Processing complete with ${warningList.children.length} template warning(s).`;
-                                  statusElement.classList.add('text-yellow-600');
-                              } else if (validationErrors.length > 0) {
-                                  statusElement.textContent = 'Processing complete!';
-                                  statusElement.classList.add('text-green-600');
-                              } else {
-                                  statusElement.textContent = 'Processing complete!';
-                                  statusElement.classList.add('text-green-600');
-                              }
                          } catch (e) {
-                             // console.error("Failed during processing:", e);
-                             statusElement.textContent = `Error: ${e.message}`;
-                             statusElement.classList.add('text-red-600');
+                             console.error("Failed during processing:", e);
                          }
                      }
                  });
 
             } catch (error) { // Catches errors from the initial validation step
-                // console.error("Failed during validation:", error);
-                statusElement.textContent = `Error: ${error.message}`;
-                statusElement.classList.add('text-red-600');
+                console.error("Failed during validation:", error);
             }
         };
         reader.onerror = () => {
             alert('Error reading file.');
-            statusElement.textContent = 'Error reading file.';
-            statusElement.classList.add('text-red-600');
         };
         reader.readAsText(selectedFile);
     }

@@ -1,19 +1,30 @@
 class DataValidationError extends Error {
-    constructor(message, lineNumber, studentName, group, errorType, date, studentId = null) {
+    constructor(message, errorType, student, lineNumber) {
         super(message);
         this.name = 'DataValidationError';
-        this.lineNumber = lineNumber;
-        this.studentName = studentName;
-        this.group = group;
         this.errorType = errorType;
-        this.date = date;
-        this.studentId = studentId;
+        this.student = student;
+        this.lineNumber = lineNumber;
     }
 
+    get studentName() { return this.student?.name; }
+    get studentId() { return this.student?.id; }
+    get group() { return this.student?.group; }
+    get date() { return this.student?.date; }
+
     toReadableMessage() {
-        const groupName = this.group.includes(' - ') ? this.group.split(' - ').pop().trim() : this.group;
+        const groupName = this.group?.includes(' - ') ? this.group.split(' - ').pop().trim() : this.group;
         return `On ${this.date} "${this.studentName}" in group "${groupName}" had a/n "${this.errorType}" error (SAR line: ${this.lineNumber})`;
     }
+}
+
+function getStudentInfo(row) {
+    return {
+        name: row['Student: Full Name'] || row['Student: Last, First'] || 'Unknown',
+        id: row['Student ID'] || null,
+        group: row['Program Day: Group: Class Name'] || 'Unknown',
+        date: row['Session Date'] || 'Unknown'
+    };
 }
 
 function convert_to_12_hour(timeString) {
@@ -114,12 +125,11 @@ function validateRow(row) {
         lineNumber
     } = row;
 
-    const studentName = row['Student: Full Name'] || row['Student: Last, First'];
-    const studentId = row['Student ID'] || null;
+    const student = getStudentInfo(row);
 
     // Rule 1: If Outcome is "Present", both "In time" and "Out time" must exist.
     if (outcome === 'Present' && (!inTime || !outTime)) {
-        throw new DataValidationError('In time or Out time is missing for a "Present" outcome.', lineNumber, studentName, groupName, 'Missing Time', sessionDate, studentId);
+        throw new DataValidationError('In time or Out time is missing for a "Present" outcome.', 'Missing Time', student, lineNumber);
     }
 
     // Rule 2: "In time" must be at least 1 minute before "Out time".
@@ -128,13 +138,13 @@ function validateRow(row) {
         const outDateTime = new Date(outTime)
 
         if (inDateTime.getTime() + 60000 > outDateTime.getTime()) {
-            throw new DataValidationError(`Out time (${outTime}) must be at least one minute after In time (${inTime}).`, lineNumber, studentName, groupName, 'Invalid Time Order', sessionDate, studentId);
+            throw new DataValidationError(`Out time (${outTime}) must be at least one minute after In time (${inTime}).`, 'Invalid Time Order', student, lineNumber);
         }
     }
 
     // Rule 3: If Outcome is "Scheduled" or "Absent", no time should exist.
     if ((outcome === 'Scheduled' || outcome === 'Absent') && (inTime || outTime)) {
-        throw new DataValidationError('Time entries should not exist for a "Scheduled" or "Absent" outcome.', lineNumber, studentName, groupName, 'Unexpected Time', sessionDate, studentId);
+        throw new DataValidationError('Time entries should not exist for a "Scheduled" or "Absent" outcome.', 'Unexpected Time', student, lineNumber);
     }
  
     // Rule 4: AM/PM time should match AM/PM group if group name ends with AM/PM.
@@ -145,7 +155,7 @@ function validateRow(row) {
             const isOutTimeAM = outTime.includes('AM');
 
             if (isGroupAM !== isInTimeAM || isGroupAM !== isOutTimeAM) {
-                throw new DataValidationError(`Time AM/PM and group AM/PM should match.`, lineNumber, studentName, groupName, 'Time/Group Mismatch', sessionDate, studentId);
+                throw new DataValidationError(`Time AM/PM and group AM/PM should match.`, 'Time/Group Mismatch', student, lineNumber);
             }
         }
     }
@@ -162,18 +172,16 @@ function validateCSVData(csvData) {
             if (error instanceof DataValidationError) {
                 errors.push(error);
             } else {
-                const studentName = row['Student: Full Name'] || row['Student: Last, First'];
-                const groupName = row['Program Day: Group: Class Name'];
-                const studentId = row['Student ID'] || null;
-
+                const student = getStudentInfo(row);
+                student.name = student.name || 'Unknown';
+                student.group = student.group || 'Unknown';
+                student.date = student.date || 'Unknown';
+                
                 errors.push(new DataValidationError(
                     `An unexpected error occurred: ${error.message}`,
-                    row.lineNumber || 0,
-                    studentName || 'Unknown',
-                    groupName || 'Unknown',
                     'System Error',
-                    row['Session Date'] || 'Unknown',
-                    studentId
+                    student,
+                    row.lineNumber || 0
                 ));
             }
         }
@@ -186,6 +194,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         validateCSVData,
         DataValidationError,
-        convert_to_12_hour
+        convert_to_12_hour,
+        getStudentInfo
     };
 }
