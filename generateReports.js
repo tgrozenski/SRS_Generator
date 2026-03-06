@@ -6,12 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorsSection = document.getElementById('errors-section');
     const errorList = document.getElementById('errorList');
     const errorCountElement = document.getElementById('errorCount');
+    const problemsSection = document.getElementById('problems-section');
+    const problemList = document.getElementById('problemList');
+    const problemCountElement = document.getElementById('problemCount');
     const warningsSection = document.getElementById('warnings-section');
     const warningList = document.getElementById('warningList');
-    const warningCountElement = document.getElementById('warningCount');
-    const studentIdsSection = document.getElementById('student-ids-section');
-    const studentIdsList = document.getElementById('studentIdsList');
-    const copyStudentIdsBtn = document.getElementById('copyStudentIds');
 
     let selectedFile;
     let classesData = {};
@@ -56,10 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
         reportListElement.innerHTML = '<p class="placeholder text-center text-gray-500">Generating reports...</p>';
         errorList.innerHTML = '';
         errorsSection.classList.add('hidden');
+        problemList.innerHTML = '';
+        problemsSection.classList.add('hidden');
         warningList.innerHTML = '';
         warningsSection.classList.add('hidden');
-        studentIdsList.innerHTML = '';
-        studentIdsSection.classList.add('hidden');
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -68,26 +67,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 1. Validate the raw CSV data first
                 const validationErrors = validateCSVData(csvData);
                 if (validationErrors.length > 0) {
-                    errorsSection.classList.remove('hidden');
-                    errorCountElement.textContent = validationErrors.length;
+                    const missingTimeErrors = validationErrors.filter(e => e.errorType === 'Missing Time');
+                    const otherErrors = validationErrors.filter(e => e.errorType !== 'Missing Time');
                     
-                    const studentIdsWithErrors = [];
-                    
-                    validationErrors.forEach(error => {
-                        const errorItem = document.createElement('div');
-                        errorItem.className = 'p-2 border-b border-red-100 last:border-b-0';
-                        errorItem.textContent = error.toReadableMessage();
-                        errorList.appendChild(errorItem);
+                    if (missingTimeErrors.length > 0) {
+                        errorsSection.classList.remove('hidden');
+                        errorCountElement.textContent = missingTimeErrors.length;
                         
-                        if (error.studentId) {
-                            studentIdsWithErrors.push(error.studentId);
-                        }
-                    });
+                        missingTimeErrors.forEach(error => {
+                            const errorItem = document.createElement('div');
+                            errorItem.className = 'p-2 border-b border-red-100 last:border-b-0';
+                            errorItem.textContent = error.toReadableMessage();
+                            errorList.appendChild(errorItem);
+                        });
+                    }
                     
-                    const uniqueStudentIds = [...new Set(studentIdsWithErrors)];
-                    if (uniqueStudentIds.length > 0) {
-                        studentIdsList.textContent = uniqueStudentIds.join(', ');
-                        studentIdsSection.classList.remove('hidden');
+                    if (otherErrors.length > 0) {
+                        problemsSection.classList.remove('hidden');
+                        problemCountElement.textContent = otherErrors.length;
+                        
+                        otherErrors.forEach(error => {
+                            const errorItem = document.createElement('div');
+                            errorItem.className = 'p-2 border-b border-orange-100 last:border-b-0';
+                            errorItem.textContent = error.toReadableMessage();
+                            problemList.appendChild(errorItem);
+                        });
                     }
                 }
 
@@ -551,25 +555,4 @@ document.addEventListener('DOMContentLoaded', () => {
               await generateReportLegacy(groupName, attendanceData);
           }
     }
-
-    copyStudentIdsBtn.addEventListener('click', async () => {
-        const idsText = studentIdsList.textContent;
-        if (idsText) {
-            try {
-                await navigator.clipboard.writeText(idsText);
-                const originalText = copyStudentIdsBtn.innerHTML;
-                copyStudentIdsBtn.innerHTML = `
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    Copied!
-                `;
-                setTimeout(() => {
-                    copyStudentIdsBtn.innerHTML = originalText;
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy:', err);
-            }
-        }
-    });
 });

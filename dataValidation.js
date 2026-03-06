@@ -14,7 +14,14 @@ class DataValidationError extends Error {
 
     toReadableMessage() {
         const groupName = this.group?.includes(' - ') ? this.group.split(' - ').pop().trim() : this.group;
-        return `On ${this.date} "${this.studentName}" in group "${groupName}" had a/n "${this.errorType}" error (SAR line: ${this.lineNumber})`;
+        let name = this.studentName || 'Unknown';
+        if (!name.includes(',')) {
+            const parts = name.split(' ').filter(p => p);
+            if (parts.length > 1) {
+                name = `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
+            }
+        }
+        return `"${name}", ${this.errorType} - (${groupName}, ${this.date})`;
     }
 }
 
@@ -59,7 +66,7 @@ function convert_to_12_hour(timeString) {
 
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours === 0 ? 12 : hours; // The hour '0' should be '12'
+    hours = hours === 0 ? 12 : hours;
 
     const secondsPart = timeParts.length > 2 ? `:${timeParts[2]}` : '';
     const newTime = `${hours}:${minutes}${secondsPart} ${ampm}`;
@@ -122,6 +129,7 @@ function validateRow(row) {
         'Out Time': outTime,
         'Program Day: Group: Class Name': groupName,
         'Session Date': sessionDate,
+        'PG Drop-Off: Full Name': pgDropoff,
         lineNumber
     } = row;
 
@@ -130,6 +138,11 @@ function validateRow(row) {
     // Rule 1: If Outcome is "Present", both "In time" and "Out time" must exist.
     if (outcome === 'Present' && (!inTime || !outTime)) {
         throw new DataValidationError('In time or Out time is missing for a "Present" outcome.', 'Missing Time', student, lineNumber);
+    }
+
+    // Rule 1b: If Outcome is "Present", "PG Drop-Off: Full Name" must exist.
+    if (outcome === 'Present' && !pgDropoff) {
+        throw new DataValidationError('PG Drop-Off name is missing for a "Present" outcome.', 'Missing Dropoff Name', student, lineNumber);
     }
 
     // Rule 2: "In time" must be at least 1 minute before "Out time".

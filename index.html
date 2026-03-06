@@ -78,11 +78,25 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
-                            Problems
+                            Missing Times
                             <span id="errorCount" class="bg-red-700 text-red-100 text-xs font-medium px-2 py-0.5 rounded-full">0</span>
                         </h2>
                     </div>
                     <div id="errorList" class="p-4 max-h-[36rem] overflow-y-auto scrollbar-thin bg-red-50 text-sm font-mono">
+                    </div>
+                </div>
+
+                <div id="problems-section" class="hidden bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-orange-500 px-6 py-4 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            Other Errors
+                            <span id="problemCount" class="bg-orange-700 text-orange-100 text-xs font-medium px-2 py-0.5 rounded-full">0</span>
+                        </h2>
+                    </div>
+                    <div id="problemList" class="p-4 max-h-[36rem] overflow-y-auto scrollbar-thin bg-orange-50 text-sm font-mono">
                     </div>
                 </div>
 
@@ -97,25 +111,6 @@
                         </h2>
                     </div>
                     <div id="warningList" class="p-4 max-h-96 overflow-y-auto scrollbar-thin bg-yellow-50 text-sm font-mono">
-                    </div>
-                </div>
-
-                <div id="student-ids-section" class="hidden bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="bg-blue-500 px-6 py-4 flex items-center justify-between">
-                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            Student IDs with Errors
-                        </h2>
-                        <button id="copyStudentIds" class="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-3 py-1 rounded transition-colors flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
-                            </svg>
-                            Copy
-                        </button>
-                    </div>
-                    <div id="studentIdsList" class="p-4 max-h-48 overflow-y-auto scrollbar-thin bg-blue-50 text-sm font-mono text-gray-700 break-all">
                     </div>
                 </div>
             </div>
