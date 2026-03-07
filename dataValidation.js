@@ -129,7 +129,7 @@ function validateRow(row) {
         'Out Time': outTime,
         'Program Day: Group: Class Name': groupName,
         'Session Date': sessionDate,
-        'PG Drop-Off: Full Name': pgDropoff,
+        'PG Pick Up: Full Name': pgDropoff,
         lineNumber
     } = row;
 
